@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arena Reward Times</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #f8fafc;
+            --accent-color: #38bdf8;
+            --border-color: #334155;
+            --highlight: #22c55e;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            padding: 40px 20px;
+            margin: 0;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1100px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: var(--accent-color);
+            margin-bottom: 10px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            background: #334155;
+            color: #94a3b8;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            border: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: #0f172a;
+            padding: 18px;
+            text-align: left;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
+        }
+
+        td {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background-color: rgba(56, 189, 248, 0.05);
+        }
+
+        .user-id {
+            font-family: monospace;
+            color: #64748b;
+        }
+
+        .timezone-tag {
+            background: #0f172a;
+            color: var(--accent-color);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid var(--accent-color);
+        }
+
+        .countdown {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+            font-weight: bold;
+            color: var(--highlight);
+            font-size: 1.1rem;
+        }
+
+        .payout-time {
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Server 126 Arena Reward Times</h1>
+        <div id="dataStatus" class="status-badge">Loading data...</div>
+    </header>
+
+    <table id="userTable">
+        <thead>
+            <tr>
+                <th>User ID</th>
+                <th>Username</th>
+                <th>Timezone</th>
+                <th>Local Payout Time</th>
+                <th>Countdown</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody">
+            <!-- Data will be injected here -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+    let userData = [];
+    const statusBadge = document.getElementById('dataStatus');
+
+    // 1. Function to fetch JSON data
+    async function fetchUsers() {
+        try {
+            const response = await fetch('users.json');
+            if (!response.ok) throw new Error('File not found');
+            userData = await response.json();
+            statusBadge.innerText = 'Live JSON Data Active';
+            statusBadge.style.color = '#22c55e';
+        } catch (error) {
+            console.error("Error loading JSON, using fallback data:", error);
+            statusBadge.innerText = 'Using Fallback Data (JSON Error)';
+            statusBadge.style.color = '#f59e0b';
+            
+            // Fallback data if JSON fails
+            userData = [
+                { id: "00000000", name: "Offline User", timezone: "UTC+0" }
+            ];
+        }
+        updateTable(); // Initial render after fetch
+    }
+
+    function parseOffset(tzString) {
+        const match = tzString.match(/UTC([+-]\d+)/);
+        return match ? parseInt(match[1]) : 0;
+    }
+
+    function updateTable() {
+        const tableBody = document.getElementById('tableBody');
+        if (userData.length === 0) return;
+
+        const now = new Date();
+        let html = '';
+
+        userData.forEach(user => {
+            const userOffset = parseOffset(user.timezone);
+            
+            // Calculate 20:00 in User's Timezone
+            let payoutUTC = new Date(Date.UTC(
+                now.getUTCFullYear(), 
+                now.getUTCMonth(), 
+                now.getUTCDate(), 
+                20 - userOffset, 0, 0
+            ));
+
+            if (payoutUTC < now) {
+                payoutUTC.setUTCDate(payoutUTC.getUTCDate() + 1);
+            }
+
+            const localPayoutString = payoutUTC.toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+
+            const diff = payoutUTC - now;
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            const countdownString = `${hours}h ${minutes}m ${seconds}s`;
+
+            html += `
+                <tr>
+                    <td class="user-id">${user.id}</td>
+                    <td><strong>${user.name}</strong></td>
+                    <td><span class="timezone-tag">${user.timezone}</span></td>
+                    <td class="payout-time">${localPayoutString}</td>
+                    <td class="countdown">${countdownString}</td>
+                </tr>
+            `;
+        });
+
+        tableBody.innerHTML = html;
+    }
+
+    // Start the application
+    fetchUsers();
+    // Update the countdown every second
+    setInterval(updateTable, 1000);
+</script>
+
+</body>
+</html>
