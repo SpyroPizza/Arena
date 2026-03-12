@@ -23,17 +23,17 @@
         "id": "60569792",
         "name": "Stifos",
         "timezone": "UTC+1"
-    }
+    },
         {
         "id": "20696596",
         "name": "Селеста",
         "timezone": "UTC+3"
-    }
+    },
         {
         "id": "60814334",
         "name": "DeuceHighboy",
         "timezone": "UTC-7"
-    }
+    },
         {
         "id": "59846945",
         "name": "Hraezlyrson",
@@ -41,3 +41,4 @@
     }
 
 ]
+
